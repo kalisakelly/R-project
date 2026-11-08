@@ -1,0 +1,366 @@
+---
+  title: "kalisasangwakelly"
+author: "Kalisa Sangwa Kelly"
+date: "2026-11-02"
+output: html_document
+---
+
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(ggcorrplot)
+
+
+
+
+data_population <- read_csv("world_population.csv")
+data_CO2 <- read_csv("CO2_emission.csv")
+
+names(data_population)
+names(data_CO2)
+
+size_population <- dim(data_population)
+size_co2 <- dim(data_CO2)
+
+
+# Identifying the data types
+
+str(data_population)
+str(data_CO2)
+
+
+# Identifying duplicates
+
+number_of_duplicates_population <- sum(duplicated(data_population))
+
+number_of_duplicates_CO2 <- sum(duplicated(data_CO2))
+
+#Identifying the Empty values
+
+number_of_empty_population_fields <- sum(is.na(data_population))
+number_of_empty_CO2_fields <- sum(is.na(data_CO2))
+
+number_of_empty_field_CO2 <- colSums(is.na(data_CO2))
+
+colSums(is.na(data_CO2))[colSums(is.na(data_CO2)) > 0]
+
+head(data_population,5)
+tail(data_population,10)
+
+dim(data_population)
+
+
+colMeans(is.na(data_CO2))[colSums(is.na(data_CO2)) > 0] * 100
+
+colSums(data_CO2 == "", na.rm = TRUE)
+
+
+#Replacing the Empty fields with the mean 
+data_CO2$`1990`[is.na(data_CO2$`1990`)] <-
+  mean(data_CO2$`1990`, na.rm = TRUE)
+  
+  data_CO2 <- data_CO2 %>%
+  mutate(
+    across(
+      all_of(as.character(1990:2018)),
+      ~ replace(.x, is.na(.x), mean(.x, na.rm = TRUE))
+    )
+  )
+  
+  
+data_CO2$`2019...35`[is.na(data_CO2$`2019...35`)] <- mean(data_CO2$`2019...35`,na.rm=TRUE)
+
+data_CO2 <- data_CO2 %>%
+  mutate(
+    `2019...35` = replace(
+      `2019...35`,
+      is.na(`2019...35`),
+      mean(`2019...35`, na.rm = TRUE)
+    )
+  )
+
+
+# using boxplot to identify outliers
+
+boxplot(
+  data_population$`World Population Percentage`,
+  main = "Distribution of World Population Percentage by Country",
+  xlab = "World Population Percentage (%)",
+  ylab = "Percentage",
+  col = "#3a86d4",
+  horizontal = FALSE
+)  
+
+boxplot(
+  data_population$`Density (per km²)`,
+  main = "Distribution of Density (per km²)",
+  xlab = "Density (per km²)",
+  ylab = "Density",
+  col = "#3a86d4",
+  horizontal = FALSE
+) 
+
+# predicting the population of 2030 of every country
+
+t <- 2030-2022
+
+r <- data_population$`Growth Rate`
+
+p <- data_population$`2022 Population`
+
+p * exp(r * t)
+
+
+
+
+data_population_2030 <- data_population %>%
+  mutate(
+    Population_2030 =
+      `2022 Population` *
+      exp(log(`Growth Rate`) * (2030 - 2022))
+  )
+?options
+options(scipen = 999)
+
+
+#Graphs
+
+data_top_10_contries <- data_population %>% arrange(desc(`2022 Population`)) %>%slice_head(n=10)
+
+#top 10 most populous counties and their population number during 2022. 
+ggplot(data_top_10_contries, aes(x = reorder(`Country/Territory`,
+                               `2022 Population`),
+                   y = `2022 Population`)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Top 10 Most Populated Countries in 2022",
+    x = "Country",
+    y = "Population"
+  ) +
+  theme_minimal()
+  
+# top 10 most populous counties and population number since 1990-2022
+
+population_trend <- data_top_10_contries %>%
+  select(
+    `Country/Territory`,
+    `1990 Population`,
+    `2000 Population`,
+    `2010 Population`,
+    `2015 Population`,
+    `2020 Population`,
+    `2022 Population`
+  ) %>%
+  pivot_longer(
+    cols = -`Country/Territory`,
+    names_to = "Year",
+    values_to = "Population"
+  ) %>%
+  mutate(
+    Year = as.integer(gsub(" Population", "", Year))
+  )
+  
+
+ggplot(
+  population_trend,
+  aes(
+    x = Year,
+    y = Population,
+    color = `Country/Territory`,
+    group = `Country/Territory`
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  labs(
+    title = "Population Trends of the Top 10 Countries",
+    x = "Year",
+    y = "Population",
+    color = "Country"
+  ) +
+  theme_minimal()
+  
+#CO2 Emissions Around the World data set to extract emission of 10 most populous countries.
+
+data_CO2 %>%
+  select(`Country Name`, `Indicator Name`,
+         `2019...34`, `2019...35`) %>%
+  head(10)
+
+co2_top10 <- data_CO2 %>%
+  filter(
+    `Country Name` %in% data_top_10_contries$`Country/Territory`
+  )
+  
+co2_top10 <- data_CO2 %>%
+  filter(
+    `Indicator Name` == "CO2 emissions (metric tons per capita)",
+    `Country Name` %in% data_top_10_contries$`Country/Territory`
+  )
+  
+  co2_trend <- co2_top10 %>%
+  select(
+    `Country Name`,
+    all_of(as.character(1990:2018)),
+    `2019...35`
+  ) %>%
+  pivot_longer(
+    cols = -`Country Name`,
+    names_to = "Year",
+    values_to = "CO2_Emissions"
+  ) %>%
+  mutate(
+    Year = as.integer(sub("\\.\\.\\..*$", "", Year))
+  )
+  
+# graph for CO2 to TOP countries
+
+  ggplot(
+  co2_trend,
+  aes(
+    x = Year,
+    y = CO2_Emissions,
+    color = `Country Name`,
+    group = `Country Name`
+  )
+) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "CO2 Emissions Trends of the 10 Most Populous Countries",
+    subtitle = "1990–2019",
+    x = "Year",
+    y = "CO2 Emissions",
+    color = "Country"
+  ) +
+  theme_minimal()
+
+
+#Correlation Analysis
+
+
+correlation_data <- data_population %>%
+  select(
+    `Area (km²)`,
+    `Density (per km²)`,
+    `Growth Rate`,
+    `World Population Percentage`
+  )
+  
+  correlation_matrix <- cor(
+  correlation_data,
+  use = "complete.obs",
+  method = "pearson"
+)
+
+round(correlation_matrix, 3)
+
+ggcorrplot(
+  correlation_matrix,
+  method = "square",
+  type = "lower",
+  lab = TRUE,
+  lab_size = 4,
+  colors = c("blue", "white", "red"),
+  title = "Correlation Heatmap of Population Variables",
+  ggtheme = theme_minimal()
+)
+
+#Comparing CO2 Emissions in continents
+
+population_2022 <- data_population %>%
+  select(CCA3, `2022 Population`)
+  
+co2_2019 <- data_CO2 %>%
+  select(country_code, `2019...34`) %>%
+  rename(CO2_2019 = `2019...34`)
+  
+merged_data <- population_2022 %>%
+  inner_join(
+    co2_2019,
+    by = c("CCA3" = "country_code")
+  )
+
+View(merged_data)
+
+dim(merged_data)
+
+summary(merged_data)
+
+sum(is.na(merged_data$CO2_2019))
+
+#removing empty fields from 
+
+
+ggplot(
+  merged_data,
+  aes(x = `2022 Population`, y = CO2_2019)
+) +
+  geom_point(color = "steelblue", size = 3) +
+  labs(
+    title = "Relationship Between Population and CO2 Emissions",
+    x = "Population in 2022",
+    y = "CO2 Emissions per Capita in 2019"
+  ) +
+  theme_minimal()
+  
+# correction btn population and co2 emission
+
+cor(
+  merged_data$`2022 Population`,
+  merged_data$CO2_2019,
+  use = "complete.obs",
+  method = "pearson"
+)
+
+model <- lm(
+  CO2_2019 ~ `2022 Population`,
+  data = merged_data
+)
+
+# continent 
+
+country_continent <- data_population %>%
+  select(CCA3, Continent)
+  
+co2_long <- data_CO2 %>%
+  select(country_code, all_of(as.character(1990:2019...35))) %>%
+  pivot_longer(
+    cols = country_code,
+    names_to = "Year",
+    values_to = "CO2_Per_Capita"
+  ) %>%
+  mutate(Year = as.integer(Year))
+  
+#continent information
+
+  co2_continents <- co2_long %>%
+  inner_join(
+    country_continent,
+    by = c("country_code" = "CCA3")
+  )
+  
+  continent_emissions <- co2_continents %>%
+  group_by(Continent, Year) %>%
+  summarise(
+    Average_CO2 = mean(CO2_Per_Capita, na.rm = TRUE),
+    Countries = sum(!is.na(CO2_Per_Capita)),
+    .groups = "drop"
+  )
+  
+  ggplot(
+  continent_2019,
+  aes(
+    x = reorder(Continent, Average_CO2),
+    y = Average_CO2
+  )
+) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Average CO2 Emissions per Capita by Continent (2019)",
+    x = "Continent",
+    y = "Average CO2 Emissions (Metric Tons per Capita)"
+  ) +
+  theme_minimal()

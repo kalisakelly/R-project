@@ -1,0 +1,60 @@
+
+log(-5)
+
+
+function1 <- function(num){
+
+  if (num > 0)
+  print(paste(num,"is Greater than 0"))
+  
+  else if (num == NA)
+  print('Unknown error')
+
+else
+  print(paste(num,"is Less than 0"))}
+
+function1()
+
+
+# Quadratic Function
+
+quadratic <- function(a, b, c) {
+
+  discriminant <- b^2 - 4*a*c
+
+  if (a == 0) {
+    print("This is not a quadratic equation")
+
+  } else if (discriminant > 0) {
+
+    x1 <- (-b + sqrt(discriminant)) / (2*a)
+    x2 <- (-b - sqrt(discriminant)) / (2*a)
+
+    print(paste("First root:", x1))
+    print(paste("Second root:", x2))
+
+  } else if (discriminant == 0) {
+
+    x <- -b / (2*a)
+    print(paste("One repeated root:", x))
+
+  } else {
+
+    print("No real roots")
+
+  }
+}
+
+quadratic(1, 0, -4)
+
+#
+
+i <- function(d) "a" + d
+h <- function(c) i(c)
+g <- function(b) h(b)
+f <- function(a) g(a)
+f(5)
+
+>traceback()
+
+>debug(i)
